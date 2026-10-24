@@ -20,7 +20,15 @@ const crearProducto = async (req, res) => {
       INSERT INTO inventario (codigo, marca, modelo, color, precio_costo, precio_venta, stock)
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
     `;
-    const values = [codigo, marca, modelo, color, precioCosto || 0, precioVenta || 0, stock || 0];
+    const values = [
+      codigo ? codigo.toUpperCase() : "",
+      marca ? marca.toUpperCase() : "",
+      modelo ? modelo.toUpperCase() : "",
+      color ? color.toUpperCase() : "",
+      precioCosto || 0,
+      precioVenta || 0,
+      stock || 0
+    ];
 
     const result = await pool.query(query, values);
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -45,12 +53,37 @@ const actualizarProducto = async (req, res) => {
         precio_costo = $5, precio_venta = $6, stock = $7
       WHERE id = $8 RETURNING *;
     `;
-    const values = [codigo, marca, modelo, color, precioCosto || 0, precioVenta || 0, stock || 0, id];
+    const values = [
+      codigo ? codigo.toUpperCase() : "",
+      marca ? marca.toUpperCase() : "",
+      modelo ? modelo.toUpperCase() : "",
+      color ? color.toUpperCase() : "",
+      precioCosto || 0,
+      precioVenta || 0,
+      stock || 0,
+      id
+    ];
 
     const result = await pool.query(query, values);
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error("Error al actualizar producto:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Reducir stock por venta (-1 unidad)
+const reducirStockPorVenta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      UPDATE inventario SET stock = GREATEST(0, stock - 1)
+      WHERE id = $1 RETURNING *;
+    `;
+    const result = await pool.query(query, [id]);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error("Error al reducir stock:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -67,4 +100,4 @@ const eliminarProducto = async (req, res) => {
   }
 };
 
-module.exports = { obtenerInventario, crearProducto, actualizarProducto, eliminarProducto };
+module.exports = { obtenerInventario, crearProducto, actualizarProducto, reducirStockPorVenta, eliminarProducto };

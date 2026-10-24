@@ -81,6 +81,15 @@ export const actualizarProductoInventario = async (id, datosProducto) => {
   }
 };
 
+export const reducirStockInventario = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/inventario/${id}/reducir`, { method: "PUT" });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const eliminarProductoInventario = async (id) => {
   try {
     const response = await fetch(`${API_URL}/inventario/${id}`, { method: "DELETE" });
@@ -130,12 +139,12 @@ export const actualizarOrden = async (id, datosOrden) => {
   }
 };
 
-export const registrarAbono = async (id, montoAbono, nuevoEstado) => {
+export const registrarAbono = async (id, montoAbono) => {
   try {
     const response = await fetch(`${API_URL}/ordenes/${id}/abono`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ montoAbono, nuevoEstado })
+      body: JSON.stringify({ montoAbono })
     });
     return await response.json();
   } catch (error) {

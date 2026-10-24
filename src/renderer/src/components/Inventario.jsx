@@ -14,6 +14,8 @@ export default function Inventario({ usuarioActivo }) {
   const [precioVenta, setPrecioVenta] = useState("");
   const [stock, setStock] = useState("");
 
+  const esAdminODev = usuarioActivo && (usuarioActivo.rol === "ADMIN" || usuarioActivo.rol === "DEV");
+
   useEffect(() => {
     cargar();
   }, []);
@@ -31,6 +33,11 @@ export default function Inventario({ usuarioActivo }) {
 
   const handleGuardar = async (e) => {
     e.preventDefault();
+    if (!esAdminODev) {
+      alert("Acceso denegado. Solo el administrador o soporte pueden modificar el inventario.");
+      return;
+    }
+
     const payload = {
       codigo: codigo.toUpperCase(),
       marca: marca.toUpperCase(),
@@ -75,8 +82,6 @@ export default function Inventario({ usuarioActivo }) {
     }
   };
 
-  const esAdmin = usuarioActivo && usuarioActivo.rol === "ADMIN";
-
   const productosFiltrados = productos.filter((p) => {
     const term = busqueda.toLowerCase();
     return (
@@ -90,50 +95,57 @@ export default function Inventario({ usuarioActivo }) {
     <div style={{ padding: "20px", maxWidth: "1100px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
       <h2 style={{ textAlign: "center", color: "#1a365d", marginBottom: "20px" }}>📦 Control de Inventario y Stock de Aros</h2>
 
-      <form onSubmit={handleGuardar} style={{ background: "#fff", padding: "20px", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "20px" }}>
-        <h4 style={{ margin: "0 0 15px 0", color: "#0f172a" }}>{editandoId ? "✏️ Editar Producto" : "➕ Registrar Nuevo Aro / Producto"}</h4>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>CÓDIGO / SKU*:</label>
-            <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} required style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
+      {/* Solo muestra formulario de alta/edición si es ADMIN o DEV */}
+      {esAdminODev ? (
+        <form onSubmit={handleGuardar} style={{ background: "#fff", padding: "20px", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "20px" }}>
+          <h4 style={{ margin: "0 0 15px 0", color: "#0f172a" }}>{editandoId ? "✏️ Editar Producto" : "➕ Registrar Nuevo Aro / Producto"}</h4>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>CÓDIGO / SKU*:</label>
+              <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} required style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>MARCA*:</label>
+              <input type="text" value={marca} onChange={(e) => setMarca(e.target.value.toUpperCase())} required style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>MODELO:</label>
+              <input type="text" value={modelo} onChange={(e) => setModelo(e.target.value.toUpperCase())} style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>COLOR:</label>
+              <input type="text" value={color} onChange={(e) => setColor(e.target.value.toUpperCase())} style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
+            </div>
           </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>MARCA*:</label>
-            <input type="text" value={marca} onChange={(e) => setMarca(e.target.value.toUpperCase())} required style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>MODELO:</label>
-            <input type="text" value={modelo} onChange={(e) => setModelo(e.target.value.toUpperCase())} style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>COLOR:</label>
-            <input type="text" value={color} onChange={(e) => setColor(e.target.value.toUpperCase())} style={{ width: "100%", padding: "8px", textTransform: "uppercase" }} />
-          </div>
-        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto auto", gap: "10px", alignItems: "end" }}>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>Precio Costo (L.):</label>
-            <input type="number" step="0.01" value={precioCosto} onChange={(e) => setPrecioCosto(e.target.value)} style={{ width: "100%", padding: "8px" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>Precio Venta (L.)*:</label>
-            <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={{ width: "100%", padding: "8px" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "bold" }}>Stock Disponibles*:</label>
-            <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required style={{ width: "100%", padding: "8px" }} />
-          </div>
-          <button type="submit" style={{ background: editandoId ? "#16a34a" : "#0284c7", color: "#fff", border: "none", padding: "10px 15px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-            {editandoId ? "💾 Guardar" : "➕ Agregar"}
-          </button>
-          {editandoId && (
-            <button type="button" onClick={limpiarForm} style={{ background: "#64748b", color: "#fff", border: "none", padding: "10px 15px", borderRadius: "6px", cursor: "pointer" }}>
-              Cancelar
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto auto", gap: "10px", alignItems: "end" }}>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>Precio Costo (L.):</label>
+              <input type="number" step="0.01" value={precioCosto} onChange={(e) => setPrecioCosto(e.target.value)} style={{ width: "100%", padding: "8px" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>Precio Venta (L.)*:</label>
+              <input type="number" step="0.01" value={precioVenta} onChange={(e) => setPrecioVenta(e.target.value)} required style={{ width: "100%", padding: "8px" }} />
+            </div>
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "bold" }}>Stock Disponibles*:</label>
+              <input type="number" value={stock} onChange={(e) => setStock(e.target.value)} required style={{ width: "100%", padding: "8px" }} />
+            </div>
+            <button type="submit" style={{ background: editandoId ? "#16a34a" : "#0284c7", color: "#fff", border: "none", padding: "10px 15px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
+              {editandoId ? "💾 Guardar" : "➕ Agregar"}
             </button>
-          )}
+            {editandoId && (
+              <button type="button" onClick={limpiarForm} style={{ background: "#64748b", color: "#fff", border: "none", padding: "10px 15px", borderRadius: "6px", cursor: "pointer" }}>
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+      ) : (
+        <div style={{ background: "#fef3c7", color: "#92400e", padding: "10px 15px", borderRadius: "6px", marginBottom: "20px", fontWeight: "bold", textAlign: "center" }}>
+          ℹ️ Modo Lectura de Inventario (Solo el Administrador / Soporte puede agregar o modificar aros).
         </div>
-      </form>
+      )}
 
       <div style={{ marginBottom: "15px" }}>
         <input
@@ -153,13 +165,13 @@ export default function Inventario({ usuarioActivo }) {
             <th style={{ padding: "10px" }}>Color</th>
             <th style={{ padding: "10px" }}>Precio Venta</th>
             <th style={{ padding: "10px" }}>Stock</th>
-            <th style={{ padding: "10px" }}>Acción</th>
+            {esAdminODev && <th style={{ padding: "10px" }}>Acción</th>}
           </tr>
         </thead>
         <tbody>
           {productosFiltrados.length === 0 ? (
             <tr>
-              <td colSpan="6" style={{ padding: "20px", textAlign: "center" }}>No hay aros en el inventario.</td>
+              <td colSpan={esAdminODev ? "6" : "5"} style={{ padding: "20px", textAlign: "center" }}>No hay aros en el inventario.</td>
             </tr>
           ) : (
             productosFiltrados.map((p) => {
@@ -176,16 +188,16 @@ export default function Inventario({ usuarioActivo }) {
                       {stockNum} {bajoStock ? "⚠️ Bajo" : "pcs"}
                     </span>
                   </td>
-                  <td style={{ padding: "10px", display: "flex", gap: "6px", justifyContent: "center" }}>
-                    <button onClick={() => handleEditar(p)} style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>
-                      ✏️ Editar
-                    </button>
-                    {esAdmin && (
+                  {esAdminODev && (
+                    <td style={{ padding: "10px", display: "flex", gap: "6px", justifyContent: "center" }}>
+                      <button onClick={() => handleEditar(p)} style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>
+                        ✏️ Editar
+                      </button>
                       <button onClick={() => handleEliminar(p.id, `${p.marca} ${p.modelo}`)} style={{ background: "#ef4444", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>
                         🗑️ Eliminar
                       </button>
-                    )}
-                  </td>
+                    </td>
+                  )}
                 </tr>
               );
             })

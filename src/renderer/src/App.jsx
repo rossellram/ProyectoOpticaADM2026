@@ -38,6 +38,8 @@ function App() {
     setPestaña("historial");
   };
 
+  const esAdminODev = usuarioActivo.rol === "ADMIN" || usuarioActivo.rol === "DEV";
+
   return (
     <div className="App" style={{ minHeight: "100vh", backgroundColor: "#f1f5f9" }}>
       <nav style={{ background: "#0f172a", padding: "12px 30px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -75,7 +77,7 @@ function App() {
             📲 Notificaciones
           </button>
 
-          {usuarioActivo.rol === "ADMIN" && (
+          {esAdminODev && (
             <button
               onClick={() => { setOrdenAEditar(null); setPestaña("reportes"); }}
               style={{ padding: "8px 12px", background: pestaña === "reportes" ? "#0284c7" : "transparent", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
@@ -84,7 +86,7 @@ function App() {
             </button>
           )}
 
-          {usuarioActivo.rol === "ADMIN" && (
+          {esAdminODev && (
             <button
               onClick={() => { setOrdenAEditar(null); setPestaña("usuarios"); }}
               style={{ padding: "8px 12px", background: pestaña === "usuarios" ? "#0284c7" : "transparent", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
@@ -109,7 +111,7 @@ function App() {
 
       <div style={{ marginTop: "20px" }}>
         {pestaña === "nueva" && (
-          <OrdenGraduacion ordenAEditar={ordenAEditar} alFinalizarEdicion={handleFinalizarEdicion} irACotizar={handleCotizarOrden} />
+          <OrdenGraduacion ordenAEditar={ordenAEditar} alFinalizarEdicion={handleFinalizarEdicion} irACotizar={handleCotizarOrden} usuarioActivo={usuarioActivo} />
         )}
         {pestaña === "historial" && (
           <HistorialOrdenes alEditarOrden={handleEditarOrden} alCotizarOrden={handleCotizarOrden} usuarioActivo={usuarioActivo} />
@@ -123,11 +125,11 @@ function App() {
         {pestaña === "notificaciones" && (
           <Notificaciones />
         )}
-        {pestaña === "reportes" && usuarioActivo.rol === "ADMIN" && (
+        {pestaña === "reportes" && esAdminODev && (
           <ReportesCaja />
         )}
-        {pestaña === "usuarios" && usuarioActivo.rol === "ADMIN" && (
-          <GestionUsuarios />
+        {pestaña === "usuarios" && esAdminODev && (
+          <GestionUsuarios usuarioActivo={usuarioActivo} />
         )}
       </div>
     </div>

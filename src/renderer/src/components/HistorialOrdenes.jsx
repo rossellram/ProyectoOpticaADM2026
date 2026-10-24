@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { obtenerOrdenes, registrarAbono, eliminarOrden } from "../services/api";
 
 export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuarioActivo }) {
@@ -6,6 +6,7 @@ export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuari
   const [busqueda, setBusqueda] = useState("");
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     cargarHistorial();
@@ -81,21 +82,124 @@ export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuari
   });
 
   const handleImprimir = () => {
-    window.print();
+    if (!ordenSeleccionada || !iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receta Médica - ${ordenSeleccionada.cliente_nombre || ordenSeleccionada.clienteNombre}</title>
+          <style>
+            @page { size: auto; margin: 10mm; }
+            body { font-family: Arial, sans-serif; padding: 15px; color: #0f172a; margin: 0; }
+            .header { text-align: center; border-bottom: 2px solid #1a365d; padding-bottom: 8px; margin-bottom: 12px; }
+            .header h1 { margin: 0; color: #1a365d; font-size: 22px; }
+            .header p { margin: 2px 0; font-size: 13px; color: #475569; }
+            .grid-data { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; margin-bottom: 12px; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
+            table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; margin-bottom: 12px; }
+            th, td { border: 1px solid #cbd5e1; padding: 5px; }
+            th { background: #e2e8f0; }
+            .totals { margin-top: 10px; padding: 8px; background: #f1f5f9; text-align: center; border-radius: 6px; }
+            .firma { margin-top: 35px; text-align: center; border-top: 1px solid #000; padding-top: 6px; width: 220px; margin-left: auto; margin-right: auto; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>ÓPTICA ADM</h1>
+            <p>Examen & Receta Médica Visual</p>
+          </div>
+
+          <div class="grid-data">
+            <p style="margin:2px 0;"><strong>Paciente:</strong> ${ordenSeleccionada.cliente_nombre || ordenSeleccionada.clienteNombre}</p>
+            <p style="margin:2px 0;"><strong>Fecha:</strong> ${ordenSeleccionada.fecha ? String(ordenSeleccionada.fecha).split("T")[0] : "-"}</p>
+            <p style="margin:2px 0;"><strong>Teléfono:</strong> ${ordenSeleccionada.telefono || "N/A"}</p>
+            <p style="margin:2px 0;"><strong>Edad:</strong> ${ordenSeleccionada.edad || "N/A"} años</p>
+            <p style="margin:2px 0; grid-column: span 2;"><strong>Atendido Por:</strong> ${ordenSeleccionada.usuario_nombre || "SISTEMA"}</p>
+          </div>
+
+          <h4 style="margin: 8px 0;">Graduación Prescrita</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Ojo</th>
+                <th>Esfera</th>
+                <th>Cilindro</th>
+                <th>Eje</th>
+                <th>ADD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>O.D.</strong></td>
+                <td>${ordenSeleccionada.act_od_esfera || "-"}</td>
+                <td>${ordenSeleccionada.act_od_cilindro || "-"}</td>
+                <td>${ordenSeleccionada.act_od_eje || "-"}</td>
+                <td>${ordenSeleccionada.act_od_add || "-"}</td>
+              </tr>
+              <tr>
+                <td><strong>O.I.</strong></td>
+                <td>${ordenSeleccionada.act_oi_esfera || "-"}</td>
+                <td>${ordenSeleccionada.act_oi_cilindro || "-"}</td>
+                <td>${ordenSeleccionada.act_oi_eje || "-"}</td>
+                <td>${ordenSeleccionada.act_oi_add || "-"}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          ${ordenSeleccionada.observaciones ? `<p style="font-size:12px; margin: 6px 0;"><strong>Observaciones:</strong> ${ordenSeleccionada.observaciones}</p>` : ""}
+
+          <div class="totals">
+            <p style="margin: 2px 0; font-size: 12px;">Total: <strong>L. ${parseFloat(ordenSeleccionada.total || 0).toFixed(2)}</strong></p>
+            <p style="margin: 2px 0; font-size: 14px; font-weight: bold; color: ${parseFloat(ordenSeleccionada.saldo_pendiente || 0) > 0 ? "#dc2626" : "#16a34a"};">
+              Saldo Pendiente: L. ${parseFloat(ordenSeleccionada.saldo_pendiente || 0).toFixed(2)}
+            </p>
+          </div>
+
+          <div class="firma">
+            <p style="margin:0; font-weight: bold; font-size: 11px;">FIRMA OPTOMETRISTA</p>
+            <p style="margin: 2px 0; font-size: 11px; color: #475569;">${ordenSeleccionada.usuario_nombre || "SISTEMA"}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error("Error imprimiendo:", e);
+      }
+    }, 250);
   };
 
-  const esAdmin = usuarioActivo && usuarioActivo.rol === "ADMIN";
+  const esAdmin = usuarioActivo && (usuarioActivo.rol === "ADMIN" || usuarioActivo.rol === "DEV");
+
+  const estiloBtn = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "4px",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    border: "none",
+    fontWeight: "bold",
+    fontSize: "12px",
+    cursor: "pointer",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+    transition: "transform 0.1s ease"
+  };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1150px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
+    <div style={{ padding: "20px", maxWidth: "1300px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
       
-      <style>{`
-        @media print {
-          nav, .no-print, button, input { display: none !important; }
-          body { background: #fff !important; }
-          .ticket-container { border: 1px solid #000 !important; padding: 20px !important; box-shadow: none !important; }
-        }
-      `}</style>
+      {/* Iframe oculto para manejar impresión sin ventana emergente defectuosa */}
+      <iframe ref={iframeRef} style={{ position: "absolute", width: "0px", height: "0px", border: "none", visibility: "hidden" }} title="impresion_frame" />
 
       <div className="no-print">
         <h2 style={{ textAlign: "center", color: "#1a365d", marginBottom: "20px" }}>Historial de Pacientes - Óptica ADM</h2>
@@ -115,19 +219,20 @@ export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuari
       </div>
 
       {cargando ? (
-        <p className="no-print" style={{ textAlign: "center" }}>Cargando registros...</p>
+        <p style={{ textAlign: "center" }}>Cargando registros...</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: ordenSeleccionada ? "1fr 1fr" : "1fr", gap: "20px" }}>
+        <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
           
-          <div className="no-print">
+          {/* TABLA PRINCIPAL */}
+          <div style={{ flex: 1, overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", borderRadius: "8px", overflow: "hidden" }}>
               <thead>
                 <tr style={{ background: "#0f172a", color: "#fff" }}>
-                  <th style={{ padding: "10px" }}>Fecha</th>
-                  <th style={{ padding: "10px" }}>Paciente</th>
-                  <th style={{ padding: "10px" }}>Total</th>
-                  <th style={{ padding: "10px" }}>Saldo</th>
-                  <th style={{ padding: "10px" }}>Acciones</th>
+                  <th style={{ padding: "12px 10px" }}>Fecha</th>
+                  <th style={{ padding: "12px 10px" }}>Paciente</th>
+                  <th style={{ padding: "12px 10px" }}>Atendido Por</th>
+                  <th style={{ padding: "12px 10px" }}>Saldo</th>
+                  <th style={{ padding: "12px 10px" }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,23 +244,27 @@ export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuari
                   ordenesFiltradas.map((o) => {
                     const nombre = o.cliente_nombre || o.clienteNombre;
                     const saldo = parseFloat(o.saldo_pendiente || 0);
+                    const seleccionada = ordenSeleccionada && ordenSeleccionada.id === o.id;
+
                     return (
-                      <tr key={o.id} style={{ borderBottom: "1px solid #e2e8f0", textAlign: "center" }}>
-                        <td style={{ padding: "10px" }}>{o.fecha ? String(o.fecha).split("T")[0] : "-"}</td>
-                        <td style={{ padding: "10px", fontWeight: "bold" }}>{nombre}</td>
-                        <td style={{ padding: "10px" }}>L. {parseFloat(o.total || 0).toFixed(2)}</td>
+                      <tr key={o.id} style={{ borderBottom: "1px solid #e2e8f0", textAlign: "center", background: seleccionada ? "#f0f9ff" : "#fff" }}>
+                        <td style={{ padding: "10px", fontSize: "13px", fontWeight: "600" }}>{o.fecha ? String(o.fecha).split("T")[0] : "-"}</td>
+                        <td style={{ padding: "10px", fontWeight: "bold", color: "#1e293b" }}>{nombre}</td>
+                        <td style={{ padding: "10px", fontSize: "12px", color: "#64748b" }}>{o.usuario_nombre || "SISTEMA"}</td>
                         <td style={{ padding: "10px", fontWeight: "bold", color: saldo > 0 ? "#dc2626" : "#16a34a" }}>
                           L. {saldo.toFixed(2)}
                         </td>
-                        <td style={{ padding: "10px", display: "flex", gap: "4px", justifyContent: "center" }}>
-                          <button onClick={() => setOrdenSeleccionada(o)} style={{ padding: "6px 8px", background: "#0284c7", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }} title="Ver Receta">👁️</button>
-                          <button onClick={() => alCotizarOrden(o)} style={{ padding: "6px 8px", background: "#16a34a", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }} title="Cotizar / Cobrar">💲</button>
-                          <button onClick={() => handleAbonar(o)} style={{ padding: "6px 8px", background: "#059669", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }} title="Abonar">💵</button>
-                          <button onClick={() => alEditarOrden(o)} style={{ padding: "6px 8px", background: "#f59e0b", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }} title="Editar Receta">✏️</button>
-                          <button onClick={() => enviarWhatsApp(o.telefono, nombre)} style={{ padding: "6px 8px", background: "#25D366", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }} title="WhatsApp">💬</button>
-                          {esAdmin && (
-                            <button onClick={() => handleEliminar(o.id, nombre)} style={{ padding: "6px 8px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>🗑️</button>
-                          )}
+                        <td style={{ padding: "8px 10px" }}>
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
+                            <button onClick={() => setOrdenSeleccionada(o)} style={{ ...estiloBtn, background: "#0284c7", color: "#fff" }}>👁️ Ver</button>
+                            <button onClick={() => alCotizarOrden(o)} style={{ ...estiloBtn, background: "#0d9488", color: "#fff" }}>💲 Cobro</button>
+                            <button onClick={() => handleAbonar(o)} style={{ ...estiloBtn, background: "#16a34a", color: "#fff" }}>💵 Abono</button>
+                            <button onClick={() => alEditarOrden(o)} style={{ ...estiloBtn, background: "#f59e0b", color: "#fff" }}>✏️ Editar</button>
+                            <button onClick={() => enviarWhatsApp(o.telefono, nombre)} style={{ ...estiloBtn, background: "#25D366", color: "#fff" }}>💬 WhatsApp</button>
+                            {esAdmin && (
+                              <button onClick={() => handleEliminar(o.id, nombre)} style={{ ...estiloBtn, background: "#ef4444", color: "#fff" }}>🗑️</button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -165,63 +274,81 @@ export default function HistorialOrdenes({ alEditarOrden, alCotizarOrden, usuari
             </table>
           </div>
 
+          {/* VISTA PREVIA DETALLADA EN PANTALLA */}
           {ordenSeleccionada && (
-            <div className="ticket-container" style={{ background: "#f8fafc", padding: "20px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+            <div style={{ width: "420px", background: "#fff", padding: "20px", borderRadius: "8px", border: "2px solid #0284c7", boxShadow: "0 4px 15px rgba(0,0,0,0.15)", position: "sticky", top: "20px" }}>
               
-              <div style={{ textAlign: "center", borderBottom: "2px solid #1a365d", paddingBottom: "10px", marginBottom: "15px" }}>
-                <h2 style={{ margin: 0, color: "#1a365d" }}>ÓPTICA ADM</h2>
-                <p style={{ margin: "2px 0", fontSize: "14px", color: "#475569" }}>Orden de Graduación & Receta Médica</p>
+              <div style={{ textAlign: "center", borderBottom: "2px solid #1a365d", paddingBottom: "10px", marginBottom: "12px" }}>
+                <h3 style={{ margin: 0, color: "#1a365d" }}>ÓPTICA ADM</h3>
+                <p style={{ margin: "2px 0", fontSize: "13px", color: "#64748b" }}>Examen & Receta Médica Visual</p>
               </div>
 
-              <div className="no-print" style={{ display: "flex", justifyContent: "space-between", gap: "6px", marginBottom: "15px" }}>
-                <button onClick={handleImprimir} style={{ background: "#16a34a", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>🖨️ Imprimir</button>
-                <button onClick={() => alCotizarOrden(ordenSeleccionada)} style={{ background: "#16a34a", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>💲 Cotizar/Cobrar</button>
-                <button onClick={() => alEditarOrden(ordenSeleccionada)} style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>✏️ Editar</button>
-                <button onClick={() => setOrdenSeleccionada(null)} style={{ background: "#64748b", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>✕</button>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "15px" }}>
+                <button onClick={handleImprimir} style={{ flex: 1, background: "#16a34a", color: "#fff", border: "none", padding: "8px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "12px" }}>
+                  🖨️ Imprimir Receta
+                </button>
+                <button onClick={() => alCotizarOrden(ordenSeleccionada)} style={{ flex: 1, background: "#0d9488", color: "#fff", border: "none", padding: "8px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "12px" }}>
+                  💲 Cobrar
+                </button>
+                <button onClick={() => setOrdenSeleccionada(null)} style={{ background: "#64748b", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>
+                  ✕
+                </button>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "14px", marginBottom: "15px" }}>
-                <p style={{ margin: "4px 0" }}><strong>Paciente:</strong> {ordenSeleccionada.cliente_nombre || ordenSeleccionada.clienteNombre}</p>
-                <p style={{ margin: "4px 0" }}><strong>Fecha:</strong> {ordenSeleccionada.fecha ? String(ordenSeleccionada.fecha).split("T")[0] : "-"}</p>
-                <p style={{ margin: "4px 0" }}><strong>Teléfono:</strong> {ordenSeleccionada.telefono || "N/A"}</p>
-                <p style={{ margin: "4px 0" }}><strong>Edad:</strong> {ordenSeleccionada.edad || "N/A"} años</p>
+              <div style={{ fontSize: "13px", marginBottom: "12px", background: "#f8fafc", padding: "10px", borderRadius: "6px" }}>
+                <p style={{ margin: "3px 0" }}><strong>Paciente:</strong> {ordenSeleccionada.cliente_nombre || ordenSeleccionada.clienteNombre}</p>
+                <p style={{ margin: "3px 0" }}><strong>Fecha:</strong> {ordenSeleccionada.fecha ? String(ordenSeleccionada.fecha).split("T")[0] : "-"}</p>
+                <p style={{ margin: "3px 0" }}><strong>Teléfono:</strong> {ordenSeleccionada.telefono || "N/A"}</p>
+                <p style={{ margin: "3px 0" }}><strong>Edad:</strong> {ordenSeleccionada.edad || "N/A"} años</p>
+                <p style={{ margin: "3px 0" }}><strong>Atendido Por:</strong> {ordenSeleccionada.usuario_nombre || "SISTEMA"}</p>
               </div>
               
-              <h4 style={{ borderBottom: "1px solid #cbd5e1", paddingBottom: "5px", marginTop: "15px", color: "#0f172a" }}>Graduación Prescrita</h4>
-              <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse", textAlign: "center", marginBottom: "15px" }}>
+              <h4 style={{ borderBottom: "1px solid #cbd5e1", paddingBottom: "4px", margin: "10px 0", color: "#0f172a", fontSize: "14px" }}>Graduación Prescrita</h4>
+              <table style={{ width: "100%", fontSize: "12px", borderCollapse: "collapse", textAlign: "center", marginBottom: "12px" }}>
                 <thead>
                   <tr style={{ background: "#e2e8f0" }}>
-                    <th style={{ padding: "6px", border: "1px solid #cbd5e1" }}>Ojo</th>
-                    <th style={{ padding: "6px", border: "1px solid #cbd5e1" }}>Esfera</th>
-                    <th style={{ padding: "6px", border: "1px solid #cbd5e1" }}>Cilindro</th>
-                    <th style={{ padding: "6px", border: "1px solid #cbd5e1" }}>Eje</th>
-                    <th style={{ padding: "6px", border: "1px solid #cbd5e1" }}>ADD</th>
+                    <th style={{ padding: "4px", border: "1px solid #cbd5e1" }}>Ojo</th>
+                    <th style={{ padding: "4px", border: "1px solid #cbd5e1" }}>Esfera</th>
+                    <th style={{ padding: "4px", border: "1px solid #cbd5e1" }}>Cilindro</th>
+                    <th style={{ padding: "4px", border: "1px solid #cbd5e1" }}>Eje</th>
+                    <th style={{ padding: "4px", border: "1px solid #cbd5e1" }}>ADD</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}><strong>O.D.</strong></td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_esfera || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_cilindro || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_eje || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_add || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}><strong>O.D.</strong></td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_esfera || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_cilindro || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_eje || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_od_add || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}><strong>O.I.</strong></td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_esfera || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_cilindro || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_eje || "-"}</td>
-                    <td style={{ padding: "6px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_add || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}><strong>O.I.</strong></td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_esfera || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_cilindro || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_eje || "-"}</td>
+                    <td style={{ padding: "4px", border: "1px solid #cbd5e1" }}>{ordenSeleccionada.act_oi_add || "-"}</td>
                   </tr>
                 </tbody>
               </table>
 
-              <div style={{ marginTop: "15px", paddingTop: "10px", borderTop: "2px dashed #cbd5e1" }}>
-                <p style={{ margin: "2px 0", fontSize: "14px" }}><strong>Total General:</strong> L. {parseFloat(ordenSeleccionada.total || 0).toFixed(2)}</p>
-                <p style={{ margin: "2px 0", fontSize: "14px" }}><strong>Abonado / Prima:</strong> L. {parseFloat(ordenSeleccionada.prima || 0).toFixed(2)}</p>
-                <p style={{ margin: "4px 0", fontSize: "16px", fontWeight: "bold", color: parseFloat(ordenSeleccionada.saldo_pendiente || 0) > 0 ? "#dc2626" : "#16a34a" }}>
-                  SALDO PENDIENTE: L. {parseFloat(ordenSeleccionada.saldo_pendiente || 0).toFixed(2)}
+              {ordenSeleccionada.observaciones && (
+                <div style={{ marginBottom: "12px" }}>
+                  <h5 style={{ margin: "5px 0", color: "#0f172a" }}>Observaciones:</h5>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#475569" }}>{ordenSeleccionada.observaciones}</p>
+                </div>
+              )}
+
+              <div style={{ padding: "10px", background: "#f1f5f9", borderRadius: "6px", textAlign: "center" }}>
+                <p style={{ margin: "2px 0", fontSize: "12px" }}>Total: <strong>L. {parseFloat(ordenSeleccionada.total || 0).toFixed(2)}</strong></p>
+                <p style={{ margin: "2px 0", fontSize: "14px", fontWeight: "bold", color: parseFloat(ordenSeleccionada.saldo_pendiente || 0) > 0 ? "#dc2626" : "#16a34a" }}>
+                  Saldo: L. {parseFloat(ordenSeleccionada.saldo_pendiente || 0).toFixed(2)}
                 </p>
+              </div>
+
+              <div style={{ marginTop: "20px", textAlign: "center", paddingTop: "8px", borderTop: "1px solid #cbd5e1" }}>
+                <p style={{ margin: 0, fontWeight: "bold", fontSize: "11px" }}>FIRMA OPTOMETRISTA</p>
+                <p style={{ margin: "2px 0", fontSize: "11px", color: "#64748b" }}>{ordenSeleccionada.usuario_nombre || "SISTEMA"}</p>
               </div>
 
             </div>
