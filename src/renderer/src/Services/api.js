@@ -1,6 +1,6 @@
 ﻿const API_URL = "http://127.0.0.1:3001/api";
 
-// --- SERVICIOS DE AUTENTICACIÓN Y USUARIOS ---
+// --- AUTENTICACIÓN Y USUARIOS ---
 export const loginUsuario = async (usuario, password) => {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
@@ -38,29 +38,8 @@ export const crearUsuario = async (datosUsuario) => {
 
 export const eliminarUsuario = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/auth/usuarios/${id}`, { method: "DELETE" });
-    return await response.json();
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-// --- SERVICIOS DE INVENTARIO ---
-export const obtenerInventario = async () => {
-  try {
-    const response = await fetch(`${API_URL}/inventario`);
-    return await response.json();
-  } catch (error) {
-    return [];
-  }
-};
-
-export const crearProductoInventario = async (datosProducto) => {
-  try {
-    const response = await fetch(`${API_URL}/inventario`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datosProducto)
+    const response = await fetch(`${API_URL}/auth/usuarios/${id}`, {
+      method: "DELETE"
     });
     return await response.json();
   } catch (error) {
@@ -68,38 +47,7 @@ export const crearProductoInventario = async (datosProducto) => {
   }
 };
 
-export const actualizarProductoInventario = async (id, datosProducto) => {
-  try {
-    const response = await fetch(`${API_URL}/inventario/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datosProducto)
-    });
-    return await response.json();
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const reducirStockInventario = async (id) => {
-  try {
-    const response = await fetch(`${API_URL}/inventario/${id}/reducir`, { method: "PUT" });
-    return await response.json();
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-export const eliminarProductoInventario = async (id) => {
-  try {
-    const response = await fetch(`${API_URL}/inventario/${id}`, { method: "DELETE" });
-    return await response.json();
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};
-
-// --- SERVICIOS DE ÓRDENES Y ABONOS ---
+// --- ÓRDENES DE GRADUACIÓN ---
 export const guardarOrden = async (datosOrden) => {
   try {
     const response = await fetch(`${API_URL}/ordenes`, {
@@ -139,12 +87,31 @@ export const actualizarOrden = async (id, datosOrden) => {
   }
 };
 
-export const registrarAbono = async (id, montoAbono) => {
+export const eliminarOrden = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/ordenes/${id}`, { method: "DELETE" });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// --- ABONOS ---
+export const obtenerAbonos = async () => {
+  try {
+    const response = await fetch(`${API_URL}/ordenes/abonos`);
+    return await response.json();
+  } catch (error) {
+    return [];
+  }
+};
+
+export const registrarAbono = async (id, monto, usuarioNombre) => {
   try {
     const response = await fetch(`${API_URL}/ordenes/${id}/abono`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ montoAbono })
+      body: JSON.stringify({ monto, usuarioNombre })
     });
     return await response.json();
   } catch (error) {
@@ -152,9 +119,68 @@ export const registrarAbono = async (id, montoAbono) => {
   }
 };
 
-export const eliminarOrden = async (id) => {
+// --- INVENTARIO Y STOCK ---
+export const obtenerInventario = async () => {
   try {
-    const response = await fetch(`${API_URL}/ordenes/${id}`, { method: "DELETE" });
+    const response = await fetch(`${API_URL}/inventario`);
+    return await response.json();
+  } catch (error) {
+    return [];
+  }
+};
+
+export const crearProductoInventario = async (producto) => {
+  try {
+    const response = await fetch(`${API_URL}/inventario`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(producto)
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const actualizarProductoInventario = async (id, producto) => {
+  try {
+    const response = await fetch(`${API_URL}/inventario/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(producto)
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const eliminarProductoInventario = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/inventario/${id}`, {
+      method: "DELETE"
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const reducirStockInventario = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/inventario/${id}/reducir`, {
+      method: "PUT"
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// --- RESPALDO BD ---
+export const generarRespaldoBD = async () => {
+  try {
+    const response = await fetch(`${API_URL}/respaldo`, { method: "POST" });
     return await response.json();
   } catch (error) {
     return { success: false, error: error.message };

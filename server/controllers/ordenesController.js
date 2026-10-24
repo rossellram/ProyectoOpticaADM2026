@@ -1,16 +1,6 @@
 ﻿const pool = require("../config/db");
 
-const obtenerOrdenes = async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM ordenes_graduacion ORDER BY id DESC;");
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error al obtener órdenes:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-const guardarOrden = async (req, res) => {
+const crearOrden = async (req, res) => {
   try {
     const {
       fecha, clienteNombre, edad, telefono, ocupacion,
@@ -20,7 +10,8 @@ const guardarOrden = async (req, res) => {
       observaciones,
       actOdEsfera, actOdCilindro, actOdEje, actOdAdd, actOdDp, actOdAltura,
       actOiEsfera, actOiCilindro, actOiEje, actOiAdd, actOiDp, actOiAltura,
-      usuarioNombre
+      aroDescripcion, aroPrecio, lentesDescripcion, lentesPrecio, otrosDescripcion, otrosPrecio,
+      total, prima, saldoPendiente, usuarioNombre
     } = req.body;
 
     const query = `
@@ -32,38 +23,41 @@ const guardarOrden = async (req, res) => {
         observaciones,
         act_od_esfera, act_od_cilindro, act_od_eje, act_od_add, act_od_dp, act_od_altura,
         act_oi_esfera, act_oi_cilindro, act_oi_eje, act_oi_add, act_oi_dp, act_oi_altura,
-        usuario_nombre
+        aro_descripcion, aro_precio, lentes_descripcion, lentes_precio, otros_descripcion, otros_precio,
+        total, prima, saldo_pendiente, usuario_nombre
       ) VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8, $9,
-        $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21,
-        $22,
-        $23, $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33, $34,
-        $35
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
+        $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
+        $41, $42, $43, $44
       ) RETURNING *;
     `;
 
     const values = [
-      fecha || new Date().toLocaleDateString("sv-SE"),
-      clienteNombre ? clienteNombre.toUpperCase() : "",
-      edad || null, telefono || "",
-      ocupacion ? ocupacion.toUpperCase() : "",
-      padeceHta || false, padeceDiabetes || false, padeceMigrana || false,
-      padeceOtros ? padeceOtros.toUpperCase() : "",
-      antOdEsfera ? antOdEsfera.toUpperCase() : "", antOdCilindro ? antOdCilindro.toUpperCase() : "", antOdEje ? antOdEje.toUpperCase() : "", antOdAdd ? antOdAdd.toUpperCase() : "", antOdDp ? antOdDp.toUpperCase() : "", antOdAltura ? antOdAltura.toUpperCase() : "",
-      antOiEsfera ? antOiEsfera.toUpperCase() : "", antOiCilindro ? antOiCilindro.toUpperCase() : "", antOiEje ? antOiEje.toUpperCase() : "", antOiAdd ? antOiAdd.toUpperCase() : "", antOiDp ? antOiDp.toUpperCase() : "", antOiAltura ? antOiAltura.toUpperCase() : "",
-      observaciones ? observaciones.toUpperCase() : "",
-      actOdEsfera ? actOdEsfera.toUpperCase() : "", actOdCilindro ? actOdCilindro.toUpperCase() : "", actOdEje ? actOdEje.toUpperCase() : "", actOdAdd ? actOdAdd.toUpperCase() : "", actOdDp ? actOdDp.toUpperCase() : "", actOdAltura ? actOdAltura.toUpperCase() : "",
-      actOiEsfera ? actOiEsfera.toUpperCase() : "", actOiCilindro ? actOiCilindro.toUpperCase() : "", actOiEje ? actOiEje.toUpperCase() : "", actOiAdd ? actOiAdd.toUpperCase() : "", actOiDp ? actOiDp.toUpperCase() : "", actOiAltura ? actOiAltura.toUpperCase() : "",
-      usuarioNombre ? usuarioNombre.toUpperCase() : "SISTEMA"
+      fecha || new Date().toISOString().split("T")[0], clienteNombre, edad || null, telefono, ocupacion,
+      padeceHta, padeceDiabetes, padeceMigrana, padeceOtros,
+      antOdEsfera, antOdCilindro, antOdEje, antOdAdd, antOdDp, antOdAltura,
+      antOiEsfera, antOiCilindro, antOiEje, antOiAdd, antOiDp, antOiAltura,
+      observaciones,
+      actOdEsfera, actOdCilindro, actOdEje, actOdAdd, actOdDp, actOdAltura,
+      actOiEsfera, actOiCilindro, actOiEje, actOiAdd, actOiDp, actOiAltura,
+      aroDescripcion, aroPrecio || 0, lentesDescripcion, lentesPrecio || 0, otrosDescripcion, otrosPrecio || 0,
+      total || 0, prima || 0, saldoPendiente !== undefined ? saldoPendiente : (total || 0), usuarioNombre || "SISTEMA"
     ];
 
     const result = await pool.query(query, values);
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
-    console.error("Error al guardar orden:", error);
+    console.error("Error al crear orden:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const obtenerOrdenes = async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM ordenes_graduacion ORDER BY id DESC;");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error al obtener órdenes:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -72,51 +66,35 @@ const actualizarOrden = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      fecha, clienteNombre, edad, telefono, ocupacion,
+      clienteNombre, edad, telefono, ocupacion,
       padeceHta, padeceDiabetes, padeceMigrana, padeceOtros,
-      antOdEsfera, antOdCilindro, antOdEje, antOdAdd, antOdDp, antOdAltura,
-      antOiEsfera, antOiCilindro, antOiEje, antOiAdd, antOiDp, antOiAltura,
       observaciones,
       actOdEsfera, actOdCilindro, actOdEje, actOdAdd, actOdDp, actOdAltura,
       actOiEsfera, actOiCilindro, actOiEje, actOiAdd, actOiDp, actOiAltura,
-      aroId, aroDescripcion, aroPrecio, lentesDescripcion, lentesPrecio, otrosDescripcion, otrosPrecio,
-      total, prima, saldoPendiente, estadoTrabajo, usuarioNombre
+      aroDescripcion, aroPrecio, aroId, lentesDescripcion, lentesPrecio, otrosDescripcion, otrosPrecio,
+      total, prima, saldoPendiente
     } = req.body;
 
     const query = `
       UPDATE ordenes_graduacion SET
-        fecha = $1, cliente_nombre = $2, edad = $3, telefono = $4, ocupacion = $5,
-        padece_hta = $6, padece_diabetes = $7, padece_migrana = $8, padece_otros = $9,
-        ant_od_esfera = $10, ant_od_cilindro = $11, ant_od_eje = $12, ant_od_add = $13, ant_od_dp = $14, ant_od_altura = $15,
-        ant_oi_esfera = $16, ant_oi_cilindro = $17, ant_oi_eje = $18, ant_oi_add = $19, ant_oi_dp = $20, ant_oi_altura = $21,
-        observaciones = $22,
-        act_od_esfera = $23, act_od_cilindro = $24, act_od_eje = $25, act_od_add = $26, act_od_dp = $27, act_od_altura = $28,
-        act_oi_esfera = $29, act_oi_cilindro = $30, act_oi_eje = $31, act_oi_add = $32, act_oi_dp = $33, act_oi_altura = $34,
-        aro_id = $35, aro_descripcion = $36, aro_precio = $37, lentes_descripcion = $38, lentes_precio = $39, otros_descripcion = $40, otros_precio = $41,
-        total = $42, prima = $43, saldo_pendiente = $44, estado_trabajo = $45,
-        usuario_nombre = COALESCE($46, usuario_nombre)
-      WHERE id = $47 RETURNING *;
+        cliente_nombre = $1, edad = $2, telefono = $3, ocupacion = $4,
+        padece_hta = $5, padece_diabetes = $6, padece_migrana = $7, padece_otros = $8,
+        observaciones = $9,
+        act_od_esfera = $10, act_od_cilindro = $11, act_od_eje = $12, act_od_add = $13, act_od_dp = $14, act_od_altura = $15,
+        act_oi_esfera = $16, act_oi_cilindro = $17, act_oi_eje = $18, act_oi_add = $19, act_oi_dp = $20, act_oi_altura = $21,
+        aro_descripcion = $22, aro_precio = $23, aro_id = $24, lentes_descripcion = $25, lentes_precio = $26, otros_descripcion = $27, otros_precio = $28,
+        total = $29, prima = $30, saldo_pendiente = $31
+      WHERE id = $32 RETURNING *;
     `;
 
     const values = [
-      fecha,
-      clienteNombre ? clienteNombre.toUpperCase() : "",
-      edad || null, telefono || "",
-      ocupacion ? ocupacion.toUpperCase() : "",
-      padeceHta || false, padeceDiabetes || false, padeceMigrana || false,
-      padeceOtros ? padeceOtros.toUpperCase() : "",
-      antOdEsfera ? antOdEsfera.toUpperCase() : "", antOdCilindro ? antOdCilindro.toUpperCase() : "", antOdEje ? antOdEje.toUpperCase() : "", antOdAdd ? antOdAdd.toUpperCase() : "", antOdDp ? antOdDp.toUpperCase() : "", antOdAltura ? antOdAltura.toUpperCase() : "",
-      antOiEsfera ? antOiEsfera.toUpperCase() : "", antOiCilindro ? antOiCilindro.toUpperCase() : "", antOiEje ? antOiEje.toUpperCase() : "", antOiAdd ? antOiAdd.toUpperCase() : "", antOiDp ? antOiDp.toUpperCase() : "", antOiAltura ? antOiAltura.toUpperCase() : "",
-      observaciones ? observaciones.toUpperCase() : "",
-      actOdEsfera ? actOdEsfera.toUpperCase() : "", actOdCilindro ? actOdCilindro.toUpperCase() : "", actOdEje ? actOdEje.toUpperCase() : "", actOdAdd ? actOdAdd.toUpperCase() : "", actOdDp ? actOdDp.toUpperCase() : "", actOdAltura ? actOdAltura.toUpperCase() : "",
-      actOiEsfera ? actOiEsfera.toUpperCase() : "", actOiCilindro ? actOiCilindro.toUpperCase() : "", actOiEje ? actOiEje.toUpperCase() : "", actOiAdd ? actOiAdd.toUpperCase() : "", actOiDp ? actOiDp.toUpperCase() : "", actOiAltura ? actOiAltura.toUpperCase() : "",
-      aroId || null,
-      aroDescripcion ? aroDescripcion.toUpperCase() : "", aroPrecio || 0,
-      lentesDescripcion ? lentesDescripcion.toUpperCase() : "", lentesPrecio || 0,
-      otrosDescripcion ? otrosDescripcion.toUpperCase() : "", otrosPrecio || 0,
-      total || 0, prima || 0, saldoPendiente || 0, estadoTrabajo || "PENDIENTE",
-      usuarioNombre ? usuarioNombre.toUpperCase() : null,
-      id
+      clienteNombre, edad || null, telefono, ocupacion,
+      padeceHta, padeceDiabetes, padeceMigrana, padeceOtros,
+      observaciones,
+      actOdEsfera, actOdCilindro, actOdEje, actOdAdd, actOdDp, actOdAltura,
+      actOiEsfera, actOiCilindro, actOiEje, actOiAdd, actOiDp, actOiAltura,
+      aroDescripcion, aroPrecio || 0, aroId || null, lentesDescripcion, lentesPrecio || 0, otrosDescripcion, otrosPrecio || 0,
+      total || 0, prima || 0, saldoPendiente || 0, id
     ];
 
     const result = await pool.query(query, values);
@@ -130,24 +108,47 @@ const actualizarOrden = async (req, res) => {
 const registrarAbono = async (req, res) => {
   try {
     const { id } = req.params;
-    const { montoAbono } = req.body;
+    const { montoAbono, monto, usuarioNombre } = req.body;
+    const abonoValor = parseFloat(montoAbono || monto || 0);
 
-    const ordenActual = await pool.query("SELECT * FROM ordenes_graduacion WHERE id = $1;", [id]);
-    if (ordenActual.rows.length === 0) {
+    if (isNaN(abonoValor) || abonoValor <= 0) {
+      return res.status(400).json({ success: false, error: "Monto de abono no válido." });
+    }
+
+    const ordenRes = await pool.query("SELECT * FROM ordenes_graduacion WHERE id = $1;", [id]);
+    if (ordenRes.rows.length === 0) {
       return res.status(404).json({ success: false, error: "Orden no encontrada." });
     }
 
-    const orden = ordenActual.rows[0];
-    const nuevaPrima = parseFloat(orden.prima || 0) + parseFloat(montoAbono);
-    const nuevoSaldo = parseFloat(orden.total || 0) - nuevaPrima;
-    const nuevoEstado = nuevoSaldo <= 0 ? "ENTREGADO" : "PENDIENTE";
+    const orden = ordenRes.rows[0];
+    const primaActual = parseFloat(orden.prima || 0);
+    const saldoActual = parseFloat(orden.saldo_pendiente || 0);
 
-    const result = await pool.query(
-      "UPDATE ordenes_graduacion SET prima = $1, saldo_pendiente = $2, estado_trabajo = $3 WHERE id = $4 RETURNING *;",
-      [nuevaPrima, nuevoSaldo < 0 ? 0 : nuevoSaldo, nuevoEstado, id]
+    const nuevaPrima = primaActual + abonoValor;
+    const nuevoSaldo = Math.max(0, saldoActual - abonoValor);
+    const nuevoEstado = nuevoSaldo <= 0 ? "PAGADO" : "PENDIENTE";
+
+    await pool.query(
+      "INSERT INTO abonos (orden_id, monto, usuario_nombre) VALUES ($1, $2, $3);",
+      [parseInt(id, 10), abonoValor, usuarioNombre || "SISTEMA"]
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    const updateQuery = `
+      UPDATE ordenes_graduacion SET
+        prima = $1::numeric,
+        saldo_pendiente = $2::numeric,
+        estado_trabajo = $3::varchar
+      WHERE id = $4::integer RETURNING *;
+    `;
+
+    const result = await pool.query(updateQuery, [nuevaPrima, nuevoSaldo, nuevoEstado, parseInt(id, 10)]);
+    res.json({
+      success: true,
+      data: result.rows[0],
+      montoAbonado: abonoValor,
+      saldoAnterior: saldoActual,
+      nuevoSaldo: nuevoSaldo
+    });
   } catch (error) {
     console.error("Error al registrar abono:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -165,4 +166,4 @@ const eliminarOrden = async (req, res) => {
   }
 };
 
-module.exports = { obtenerOrdenes, guardarOrden, actualizarOrden, registrarAbono, eliminarOrden };
+module.exports = { crearOrden, obtenerOrdenes, actualizarOrden, registrarAbono, eliminarOrden };

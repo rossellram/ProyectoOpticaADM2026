@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from "react";
-import { obtenerOrdenes } from "../services/api";
+import { obtenerOrdenes, obtenerAbonos } from "../services/api";
 
 export default function ReportesCaja() {
   const [ordenes, setOrdenes] = useState([]);
+  const [abonos, setAbonos] = useState([]);
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split("T")[0]);
   const [fechaFin, setFechaFin] = useState(new Date().toISOString().split("T")[0]);
   const [cargando, setCargando] = useState(true);
@@ -13,22 +14,30 @@ export default function ReportesCaja() {
 
   const cargarDatos = async () => {
     setCargando(true);
-    const data = await obtenerOrdenes();
-    setOrdenes(data);
+    const dataOrdenes = await obtenerOrdenes();
+    const dataAbonos = await obtenerAbonos();
+    setOrdenes(dataOrdenes || []);
+    setAbonos(dataAbonos || []);
     setCargando(false);
   };
 
-  // Filtrar órdenes por rango de fechas seleccionado
   const ordenesFiltradas = ordenes.filter((o) => {
     if (!o.fecha) return false;
     const f = String(o.fecha).split("T")[0];
     return f >= fechaInicio && f <= fechaFin;
   });
 
-  // Cálculos de métricas
-  const totalVentas = ordenesFiltradas.reduce((sum, o) => sum + parseFloat(o.total || 0), 0);
-  const totalOrdenes = ordenesFiltradas.length;
-  const promedioVenta = totalOrdenes > 0 ? totalVentas / totalOrdenes : 0;
+  const abonosFiltrados = abonos.filter((a) => {
+    if (!a.fecha) return false;
+    const f = String(a.fecha).split("T")[0];
+    return f >= fechaInicio && f <= fechaFin;
+  });
+
+  const totalVentasGeneradas = ordenesFiltradas.reduce((sum, o) => sum + parseFloat(o.total || 0), 0);
+  const totalPrimasIniciales = ordenesFiltradas.reduce((sum, o) => sum + parseFloat(o.prima || 0), 0);
+  const totalAbonosPosteriores = abonosFiltrados.reduce((sum, a) => sum + parseFloat(a.monto || 0), 0);
+  const totalEfectivoCaja = totalPrimasIniciales + totalAbonosPosteriores;
+  const totalSaldosPendientes = ordenesFiltradas.reduce((sum, o) => sum + parseFloat(o.saldo_pendiente || 0), 0);
 
   const handleImprimirCierre = () => {
     window.print();
@@ -49,7 +58,7 @@ export default function ReportesCaja() {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1000px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
+    <div style={{ padding: "20px", maxWidth: "1100px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
       
       <style>{`
         @media print {
@@ -59,7 +68,6 @@ export default function ReportesCaja() {
         }
       `}</style>
 
-      {/* Filtros de Fecha */}
       <div className="no-print" style={{ background: "#fff", padding: "20px", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: "20px" }}>
         <h2 style={{ textAlign: "center", color: "#1a365d", marginTop: 0 }}>📊 Reportes de Ventas & Cierre de Caja</h2>
         
@@ -87,7 +95,6 @@ export default function ReportesCaja() {
         </div>
       </div>
 
-      {/* Contenedor Imprimible del Cierre */}
       <div className="reporte-container" style={{ background: "#fff", padding: "25px", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
         
         <div style={{ textAlign: "center", borderBottom: "2px solid #1a365d", paddingBottom: "10px", marginBottom: "20px" }}>
@@ -96,57 +103,71 @@ export default function ReportesCaja() {
           <p style={{ margin: "2px 0", fontSize: "13px", fontWeight: "bold" }}>Rango: {fechaInicio} al {fechaFin}</p>
         </div>
 
-        {/* Tarjetas de Métricas */}
-        <div className="no-print" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px", marginBottom: "25px" }}>
-          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "15px", borderRadius: "8px", textAlign: "center" }}>
-            <span style={{ fontSize: "13px", color: "#166534", fontWeight: "bold" }}>TOTAL COBRADO</span>
-            <h2 style={{ margin: "5px 0", color: "#15803d" }}>L. {totalVentas.toFixed(2)}</h2>
+        {/* Tarjetas de Métricas de Caja */}
+        <div className="no-print" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px", marginBottom: "25px" }}>
+          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px", borderRadius: "8px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "#1e40af", fontWeight: "bold" }}>VENTAS TOTALES</span>
+            <h3 style={{ margin: "4px 0", color: "#1d4ed8" }}>L. {totalVentasGeneradas.toFixed(2)}</h3>
           </div>
-          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "15px", borderRadius: "8px", textAlign: "center" }}>
-            <span style={{ fontSize: "13px", color: "#1e40af", fontWeight: "bold" }}>ÓRDENES ATENDIDAS</span>
-            <h2 style={{ margin: "5px 0", color: "#1d4ed8" }}>{totalOrdenes}</h2>
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "12px", borderRadius: "8px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "#166534", fontWeight: "bold" }}>PRIMAS INICIALES</span>
+            <h3 style={{ margin: "4px 0", color: "#15803d" }}>L. {totalPrimasIniciales.toFixed(2)}</h3>
           </div>
-          <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: "15px", borderRadius: "8px", textAlign: "center" }}>
-            <span style={{ fontSize: "13px", color: "#475569", fontWeight: "bold" }}>PROMEDIO POR VENTA</span>
-            <h2 style={{ margin: "5px 0", color: "#334155" }}>L. {promedioVenta.toFixed(2)}</h2>
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "12px", borderRadius: "8px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "#166534", fontWeight: "bold" }}>ABONOS COBRADOS</span>
+            <h3 style={{ margin: "4px 0", color: "#15803d" }}>L. {totalAbonosPosteriores.toFixed(2)}</h3>
+          </div>
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px", borderRadius: "8px", textAlign: "center" }}>
+            <span style={{ fontSize: "11px", color: "#991b1b", fontWeight: "bold" }}>SALDOS POR COBRAR</span>
+            <h3 style={{ margin: "4px 0", color: "#dc2626" }}>L. {totalSaldosPendientes.toFixed(2)}</h3>
           </div>
         </div>
 
-        {/* Tabla Detallada de Ventas */}
-        <h4 style={{ color: "#0f172a", marginBottom: "10px" }}>Detalle de Transacciones</h4>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px", textAlign: "center" }}>
+        {/* Detalle de Abonos Diarios con Totales y Saldos de la Orden */}
+        <h4 style={{ color: "#0f172a", marginBottom: "8px" }}>💵 Detalle de Abonos Recibidos en la Jornada</h4>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "center", marginBottom: "20px" }}>
           <thead>
-            <tr style={{ background: "#0f172a", color: "#fff" }}>
-              <th style={{ padding: "8px" }}>Fecha</th>
+            <tr style={{ background: "#16a34a", color: "#fff" }}>
+              <th style={{ padding: "8px" }}>Hora / Fecha</th>
               <th style={{ padding: "8px" }}>Paciente</th>
-              <th style={{ padding: "8px" }}>Aro / Lentes</th>
-              <th style={{ padding: "8px" }}>Monto Total</th>
+              <th style={{ padding: "8px" }}>Total de Orden</th>
+              <th style={{ padding: "8px" }}>Saldo Pendiente</th>
+              <th style={{ padding: "8px" }}>Cobrado Por</th>
+              <th style={{ padding: "8px" }}>Monto Abonado</th>
             </tr>
           </thead>
           <tbody>
-            {ordenesFiltradas.length === 0 ? (
+            {abonosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ padding: "20px" }}>No hay registros de ventas en el rango de fechas seleccionado.</td>
+                <td colSpan="6" style={{ padding: "15px", color: "#64748b" }}>No se registraron abonos posteriores en esta fecha.</td>
               </tr>
             ) : (
-              ordenesFiltradas.map((o) => (
-                <tr key={o.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "8px" }}>{o.fecha ? String(o.fecha).split("T")[0] : "-"}</td>
-                  <td style={{ padding: "8px", fontWeight: "bold" }}>{o.cliente_nombre || o.clienteNombre}</td>
-                  <td style={{ padding: "8px", fontSize: "12px", color: "#475569" }}>
-                    {o.aro_descripcion || o.lentes_descripcion ? `${o.aro_descripcion || ""} / ${o.lentes_descripcion || ""}` : "Graduación completa"}
-                  </td>
-                  <td style={{ padding: "8px", fontWeight: "bold", color: "#15803d" }}>L. {parseFloat(o.total || 0).toFixed(2)}</td>
-                </tr>
-              ))
+              abonosFiltrados.map((a) => {
+                const ordenAsociada = ordenes.find(o => String(o.id) === String(a.orden_id)) || {};
+                const totalOrden = parseFloat(ordenAsociada.total || 0);
+                const saldoPendienteOrden = parseFloat(ordenAsociada.saldo_pendiente || 0);
+
+                return (
+                  <tr key={a.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                    <td style={{ padding: "8px" }}>{a.fecha ? new Date(a.fecha).toLocaleString() : "-"}</td>
+                    <td style={{ padding: "8px", fontWeight: "bold" }}>{(a.cliente_nombre || ordenAsociada.cliente_nombre || "PACIENTE").toUpperCase()}</td>
+                    <td style={{ padding: "8px" }}>L. {totalOrden.toFixed(2)}</td>
+                    <td style={{ padding: "8px", fontWeight: "bold", color: saldoPendienteOrden > 0 ? "#dc2626" : "#16a34a" }}>
+                      L. {saldoPendienteOrden.toFixed(2)}
+                    </td>
+                    <td style={{ padding: "8px" }}>{a.usuario_nombre || "SISTEMA"}</td>
+                    <td style={{ padding: "8px", fontWeight: "bold", color: "#15803d", background: "#f0fdf4" }}>L. {parseFloat(a.monto || 0).toFixed(2)}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
 
-        {/* Resumen Total al Final para Impresión */}
-        <div style={{ marginTop: "20px", paddingTop: "10px", borderTop: "2px solid #0f172a", textAlign: "right" }}>
-          <p style={{ margin: "4px 0", fontSize: "18px", fontWeight: "bold", color: "#0f172a" }}>
-            TOTAL DE CAJA: L. {totalVentas.toFixed(2)}
+        {/* Total General en Cierre */}
+        <div style={{ marginTop: "20px", paddingTop: "12px", borderTop: "2px solid #0f172a", textAlign: "right" }}>
+          <p style={{ margin: "4px 0", fontSize: "20px", fontWeight: "bold", color: "#15803d" }}>
+            TOTAL EFECTIVO REAL EN CAJA: L. {totalEfectivoCaja.toFixed(2)}
           </p>
         </div>
 
